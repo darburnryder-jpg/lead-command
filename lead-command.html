@@ -1,0 +1,658 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Keystone — Lead Command</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+:root {
+  --bg: #04060A;
+  --bg2: #070B12;
+  --panel: #0A1019;
+  --panel2: #0D1521;
+  --line: #15202E;
+  --line2: #1C2A3C;
+  --blue: #2BB8FF;
+  --blue-bright: #4FCBFF;
+  --blue-deep: #0A8FE0;
+  --blue-glow: rgba(43,184,255,0.5);
+  --blue-soft: rgba(43,184,255,0.12);
+  --text: #E6F0FA;
+  --text-soft: #7F93A8;
+  --text-mute: #4A5A6E;
+  --hot: #FF4D6D;
+  --warm: #FFB23E;
+  --cold-c: #4A6B8A;
+  --won: #2BFF9E;
+  --lost: #54657A;
+  --radius: 14px;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior:smooth; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Space Grotesk', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  min-height: 100vh;
+  padding-bottom: 80px;
+}
+body::before {
+  content:""; position:fixed; top:-30%; left:50%; transform:translateX(-50%);
+  width:900px; height:600px;
+  background:radial-gradient(ellipse at center, var(--blue-glow), transparent 70%);
+  opacity:0.12; filter:blur(60px); z-index:0; pointer-events:none;
+}
+
+.app { max-width:920px; margin:0 auto; padding:0 16px; position:relative; z-index:2; }
+
+/* HEADER */
+header {
+  padding: 28px 0 20px;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.brand { display:flex; align-items:center; gap:12px; }
+.brand .logo-dot {
+  width:12px; height:12px; border-radius:50%;
+  background:var(--blue);
+  box-shadow:0 0 12px var(--blue), 0 0 24px var(--blue-glow);
+  animation: pulse 2.5s infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.35;} }
+.brand h1 {
+  font-size:1.15rem; font-weight:700; letter-spacing:0.02em;
+}
+.brand h1 span { color:var(--blue); }
+.brand .sub {
+  font-family:'JetBrains Mono', monospace;
+  font-size:0.65rem; color:var(--text-mute);
+  letter-spacing:0.15em; text-transform:uppercase;
+}
+
+/* TABS */
+.tabs {
+  display:flex; gap:4px; background:var(--panel);
+  border:1px solid var(--line); border-radius:100px;
+  padding:4px; margin-bottom:24px;
+}
+.tab {
+  flex:1; text-align:center; padding:10px 8px;
+  border-radius:100px; cursor:pointer;
+  font-size:0.82rem; font-weight:600; color:var(--text-soft);
+  transition:all 0.2s; border:none; background:none;
+  font-family:inherit;
+}
+.tab.active {
+  background:var(--blue-soft); color:var(--blue-bright);
+  box-shadow:inset 0 0 0 1px rgba(43,184,255,0.3);
+}
+
+/* STATS BAR */
+.stats-row {
+  display:grid; grid-template-columns:repeat(4,1fr); gap:10px;
+  margin-bottom:24px;
+}
+.stat {
+  background:var(--panel); border:1px solid var(--line);
+  border-radius:var(--radius); padding:16px 14px; text-align:center;
+}
+.stat .num {
+  font-family:'JetBrains Mono', monospace;
+  font-size:1.6rem; font-weight:700; color:var(--blue-bright);
+  line-height:1;
+}
+.stat .lab {
+  font-size:0.66rem; color:var(--text-mute); margin-top:6px;
+  letter-spacing:0.08em; text-transform:uppercase;
+}
+
+/* SECTION TITLE */
+.sec-title {
+  font-size:0.72rem; font-weight:700; color:var(--text-mute);
+  letter-spacing:0.16em; text-transform:uppercase;
+  margin:24px 0 14px; display:flex; align-items:center; gap:10px;
+}
+.sec-title::after { content:""; flex:1; height:1px; background:var(--line); }
+.sec-title .count {
+  color:var(--blue); font-family:'JetBrains Mono', monospace;
+}
+
+/* LEAD CARD */
+.lead {
+  background:var(--panel); border:1px solid var(--line);
+  border-radius:var(--radius); margin-bottom:12px;
+  overflow:hidden; transition:border-color 0.2s;
+}
+.lead.overdue { border-color:rgba(255,77,109,0.4); }
+.lead-head {
+  padding:16px 18px; cursor:pointer;
+  display:flex; align-items:center; gap:14px;
+}
+.warmth-dot {
+  width:10px; height:10px; border-radius:50%; flex-shrink:0;
+}
+.warmth-dot.hot { background:var(--hot); box-shadow:0 0 8px var(--hot); }
+.warmth-dot.warm { background:var(--warm); box-shadow:0 0 8px var(--warm); }
+.warmth-dot.cold { background:var(--cold-c); }
+.lead-main { flex:1; min-width:0; }
+.lead-name { font-size:1rem; font-weight:600; }
+.lead-biz { font-size:0.82rem; color:var(--text-soft); }
+.lead-right { text-align:right; flex-shrink:0; }
+.stage-badge {
+  display:inline-block; font-size:0.66rem; font-weight:700;
+  padding:4px 10px; border-radius:100px;
+  letter-spacing:0.05em; text-transform:uppercase;
+}
+.stage-cold { background:rgba(74,107,138,0.15); color:#7BA8CC; }
+.stage-contacted { background:rgba(43,184,255,0.12); color:var(--blue-bright); }
+.stage-warm { background:rgba(255,178,62,0.14); color:var(--warm); }
+.stage-meeting { background:rgba(168,85,255,0.16); color:#C79BFF; }
+.stage-proposal { background:rgba(43,184,255,0.18); color:var(--blue-bright); }
+.stage-won { background:rgba(43,255,158,0.14); color:var(--won); }
+.stage-lost { background:rgba(84,101,122,0.15); color:var(--lost); }
+.next-action {
+  font-size:0.72rem; color:var(--text-mute); margin-top:5px;
+  font-family:'JetBrains Mono', monospace;
+}
+.next-action.due { color:var(--hot); }
+
+/* EXPANDED BODY */
+.lead-body {
+  display:none; padding:0 18px 18px;
+  border-top:1px solid var(--line);
+}
+.lead.open .lead-body { display:block; }
+.lead.open .lead-head { padding-bottom:14px; }
+
+.field { margin-top:16px; }
+.field-label {
+  font-size:0.68rem; color:var(--text-mute);
+  letter-spacing:0.1em; text-transform:uppercase; font-weight:600;
+  margin-bottom:7px;
+}
+.field input, .field textarea, .field select {
+  width:100%; background:var(--bg2); border:1px solid var(--line2);
+  border-radius:10px; padding:11px 13px; color:var(--text);
+  font-family:inherit; font-size:0.88rem; transition:border-color 0.2s;
+}
+.field input:focus, .field textarea:focus, .field select:focus {
+  outline:none; border-color:var(--blue);
+  box-shadow:0 0 0 3px var(--blue-soft);
+}
+.field textarea { resize:vertical; min-height:80px; line-height:1.5; }
+.field-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+/* CHECKLIST */
+.checklist { margin-top:8px; }
+.check-item {
+  display:flex; align-items:center; gap:11px;
+  padding:10px 12px; background:var(--bg2);
+  border:1px solid var(--line); border-radius:10px; margin-bottom:7px;
+}
+.check-box {
+  width:20px; height:20px; border-radius:6px; flex-shrink:0;
+  border:1.5px solid var(--line2); cursor:pointer;
+  display:flex; align-items:center; justify-content:center;
+  transition:all 0.15s;
+}
+.check-box.checked {
+  background:var(--blue); border-color:var(--blue);
+  box-shadow:0 0 10px var(--blue-glow);
+}
+.check-box.checked::after {
+  content:"✓"; color:var(--bg); font-size:0.8rem; font-weight:700;
+}
+.check-text {
+  flex:1; font-size:0.85rem; background:none; border:none;
+  color:var(--text); font-family:inherit;
+}
+.check-text:focus { outline:none; }
+.check-item.done .check-text { color:var(--text-mute); text-decoration:line-through; }
+.check-del {
+  color:var(--text-mute); cursor:pointer; font-size:1.1rem;
+  background:none; border:none; padding:0 4px;
+}
+.check-del:hover { color:var(--hot); }
+.add-check {
+  display:flex; align-items:center; gap:8px;
+  color:var(--blue); font-size:0.8rem; cursor:pointer;
+  background:none; border:none; font-family:inherit;
+  padding:8px 4px; font-weight:600;
+}
+
+/* BUTTONS */
+.lead-actions { display:flex; gap:8px; margin-top:18px; }
+.btn {
+  flex:1; padding:12px; border-radius:10px; cursor:pointer;
+  font-family:inherit; font-weight:600; font-size:0.82rem;
+  border:none; transition:all 0.2s;
+}
+.btn-save { background:var(--blue); color:var(--bg); }
+.btn-save:hover { box-shadow:0 0 16px var(--blue-glow); }
+.btn-del {
+  background:none; border:1px solid var(--line2); color:var(--text-soft);
+  flex:0 0 auto; padding:12px 18px;
+}
+.btn-del:hover { border-color:var(--hot); color:var(--hot); }
+
+.saved-flash {
+  font-size:0.72rem; color:var(--won); text-align:center;
+  margin-top:10px; opacity:0; transition:opacity 0.3s;
+  font-family:'JetBrains Mono', monospace;
+}
+.saved-flash.show { opacity:1; }
+
+/* FAB */
+.fab {
+  position:fixed; bottom:24px; right:24px; z-index:50;
+  width:60px; height:60px; border-radius:50%;
+  background:var(--blue); border:none; cursor:pointer;
+  font-size:1.8rem; color:var(--bg); font-weight:300;
+  box-shadow:0 4px 24px var(--blue-glow), 0 0 0 1px rgba(255,255,255,0.1);
+  display:flex; align-items:center; justify-content:center;
+  transition:transform 0.2s;
+}
+.fab:hover { transform:scale(1.08) rotate(90deg); }
+
+/* MODAL */
+.modal-bg {
+  display:none; position:fixed; inset:0; z-index:100;
+  background:rgba(2,4,8,0.85); backdrop-filter:blur(6px);
+  align-items:flex-start; justify-content:center; padding:40px 16px;
+  overflow-y:auto;
+}
+.modal-bg.open { display:flex; }
+.modal {
+  background:var(--panel2); border:1px solid var(--line2);
+  border-radius:18px; padding:28px 24px; width:100%; max-width:480px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.6);
+}
+.modal h2 { font-size:1.2rem; margin-bottom:4px; }
+.modal .modal-sub { font-size:0.8rem; color:var(--text-mute); margin-bottom:22px; }
+
+/* EMPTY */
+.empty {
+  text-align:center; padding:60px 20px; color:var(--text-mute);
+}
+.empty .ico { font-size:2.5rem; margin-bottom:16px; opacity:0.5; }
+.empty h3 { color:var(--text-soft); font-weight:600; margin-bottom:8px; }
+.empty p { font-size:0.88rem; }
+
+.pipeline-col { margin-bottom:8px; }
+
+@media (max-width:600px) {
+  .stats-row { grid-template-columns:repeat(2,1fr); }
+  .field-row { grid-template-columns:1fr; }
+  .tab { font-size:0.74rem; padding:9px 4px; }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="logo-dot"></div>
+      <div>
+        <h1>Lead<span>Command</span></h1>
+        <div class="sub">Keystone Growth</div>
+      </div>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-view="today">Today</button>
+    <button class="tab" data-view="all">All Leads</button>
+    <button class="tab" data-view="pipeline">Pipeline</button>
+  </div>
+
+  <div class="stats-row" id="statsRow"></div>
+
+  <div id="content"></div>
+</div>
+
+<button class="fab" id="addBtn">+</button>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h2>New Lead</h2>
+    <div class="modal-sub">Add someone to the pipeline</div>
+    <div class="field">
+      <div class="field-label">Name</div>
+      <input id="m_name" placeholder="Who is it?" />
+    </div>
+    <div class="field">
+      <div class="field-label">Business Name</div>
+      <input id="m_biz" placeholder="Their business" />
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <div class="field-label">Niche</div>
+        <input id="m_niche" placeholder="e.g. Mechanic" />
+      </div>
+      <div class="field">
+        <div class="field-label">Lead Source</div>
+        <select id="m_source">
+          <option>Door Knock</option>
+          <option>Referral</option>
+          <option>Email</option>
+          <option>Walk-in</option>
+          <option>Social</option>
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+    <div class="field-row">
+      <div class="field">
+        <div class="field-label">Phone</div>
+        <input id="m_phone" placeholder="Contact number" />
+      </div>
+      <div class="field">
+        <div class="field-label">Est. Value /mo</div>
+        <input id="m_value" placeholder="$" />
+      </div>
+    </div>
+    <div class="lead-actions">
+      <button class="btn btn-del" id="m_cancel">Cancel</button>
+      <button class="btn btn-save" id="m_add">Add Lead</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const STAGES = ["Cold","Contacted","Warm","Meeting Booked","Proposal Sent","Won","Lost"];
+const STAGE_CLASS = {
+  "Cold":"stage-cold","Contacted":"stage-contacted","Warm":"stage-warm",
+  "Meeting Booked":"stage-meeting","Proposal Sent":"stage-proposal",
+  "Won":"stage-won","Lost":"stage-lost"
+};
+const WARMTH = ["cold","warm","hot"];
+
+let leads = [];
+let view = "today";
+let openId = null;
+
+// ---------- STORAGE ----------
+// Works in Claude artifacts (window.storage) AND hosted/standalone (localStorage)
+const hasClaudeStorage = (typeof window !== 'undefined' && window.storage && typeof window.storage.get === 'function');
+
+async function loadLeads() {
+  try {
+    if (hasClaudeStorage) {
+      const res = await window.storage.get('leads_data');
+      if (res && res.value) leads = JSON.parse(res.value);
+    } else {
+      const raw = localStorage.getItem('leads_data');
+      if (raw) leads = JSON.parse(raw);
+    }
+  } catch(e) { leads = []; }
+}
+async function saveLeads() {
+  try {
+    if (hasClaudeStorage) {
+      await window.storage.set('leads_data', JSON.stringify(leads));
+    } else {
+      localStorage.setItem('leads_data', JSON.stringify(leads));
+    }
+  } catch(e) { console.error('save failed', e); }
+}
+
+// ---------- HELPERS ----------
+function uid() { return 'L' + Date.now() + Math.floor(Math.random()*1000); }
+function todayStr() { return new Date().toISOString().split('T')[0]; }
+function isDue(dateStr) {
+  if (!dateStr) return false;
+  return dateStr <= todayStr();
+}
+function fmtDate(d) {
+  if (!d) return 'No date set';
+  const date = new Date(d + 'T00:00:00');
+  const today = new Date(todayStr() + 'T00:00:00');
+  const diff = Math.round((date - today) / 86400000);
+  if (diff === 0) return 'Today';
+  if (diff === 1) return 'Tomorrow';
+  if (diff === -1) return 'Yesterday';
+  if (diff < 0) return Math.abs(diff) + ' days overdue';
+  if (diff < 7) return 'In ' + diff + ' days';
+  return date.toLocaleDateString('en-AU', {day:'numeric', month:'short'});
+}
+
+// ---------- STATS ----------
+function renderStats() {
+  const total = leads.length;
+  const active = leads.filter(l => !['Won','Lost'].includes(l.stage)).length;
+  const won = leads.filter(l => l.stage === 'Won').length;
+  const dueToday = leads.filter(l => isDue(l.nextDate) && !['Won','Lost'].includes(l.stage)).length;
+  const html = `
+    <div class="stat"><div class="num">${total}</div><div class="lab">Total</div></div>
+    <div class="stat"><div class="num">${active}</div><div class="lab">Active</div></div>
+    <div class="stat"><div class="num" style="color:var(--hot)">${dueToday}</div><div class="lab">Due Now</div></div>
+    <div class="stat"><div class="num" style="color:var(--won)">${won}</div><div class="lab">Won</div></div>
+  `;
+  document.getElementById('statsRow').innerHTML = html;
+}
+
+// ---------- LEAD CARD ----------
+function leadCard(l) {
+  const overdue = isDue(l.nextDate) && !['Won','Lost'].includes(l.stage);
+  const checks = (l.checklist || []).map((c,i) => `
+    <div class="check-item ${c.done?'done':''}">
+      <div class="check-box ${c.done?'checked':''}" onclick="toggleCheck('${l.id}',${i})"></div>
+      <input class="check-text" value="${(c.text||'').replace(/"/g,'&quot;')}" onchange="editCheck('${l.id}',${i},this.value)" placeholder="Task..." />
+      <button class="check-del" onclick="delCheck('${l.id}',${i})">×</button>
+    </div>
+  `).join('');
+
+  const stageOpts = STAGES.map(s => `<option ${s===l.stage?'selected':''}>${s}</option>`).join('');
+  const warmthOpts = WARMTH.map(w => `<option ${w===l.warmth?'selected':''}>${w}</option>`).join('');
+  const srcOpts = ["Door Knock","Referral","Email","Walk-in","Social","Other"].map(s=>`<option ${s===l.source?'selected':''}>${s}</option>`).join('');
+
+  return `
+  <div class="lead ${openId===l.id?'open':''} ${overdue?'overdue':''}" id="card_${l.id}">
+    <div class="lead-head" onclick="toggleOpen('${l.id}')">
+      <div class="warmth-dot ${l.warmth||'cold'}"></div>
+      <div class="lead-main">
+        <div class="lead-name">${l.name||'Unnamed'}</div>
+        <div class="lead-biz">${l.biz||''}${l.niche?' · '+l.niche:''}</div>
+      </div>
+      <div class="lead-right">
+        <span class="stage-badge ${STAGE_CLASS[l.stage]}">${l.stage}</span>
+        <div class="next-action ${overdue?'due':''}">${l.nextAction? l.nextAction+' · ':''}${fmtDate(l.nextDate)}</div>
+      </div>
+    </div>
+    <div class="lead-body">
+      <div class="field-row">
+        <div class="field">
+          <div class="field-label">Stage</div>
+          <select onchange="upd('${l.id}','stage',this.value)">${stageOpts}</select>
+        </div>
+        <div class="field">
+          <div class="field-label">Warmth</div>
+          <select onchange="upd('${l.id}','warmth',this.value)">${warmthOpts}</select>
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label">What they said / Notes</div>
+        <textarea onchange="upd('${l.id}','notes',this.value)" placeholder="Everything they told you — pain points, budget, objections...">${l.notes||''}</textarea>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <div class="field-label">Next Action</div>
+          <input value="${(l.nextAction||'').replace(/"/g,'&quot;')}" onchange="upd('${l.id}','nextAction',this.value)" placeholder="e.g. Follow up call" />
+        </div>
+        <div class="field">
+          <div class="field-label">Due Date</div>
+          <input type="date" value="${l.nextDate||''}" onchange="upd('${l.id}','nextDate',this.value)" />
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <div class="field-label">Phone</div>
+          <input value="${(l.phone||'').replace(/"/g,'&quot;')}" onchange="upd('${l.id}','phone',this.value)" placeholder="Number" />
+        </div>
+        <div class="field">
+          <div class="field-label">Est. Value /mo</div>
+          <input value="${(l.value||'').replace(/"/g,'&quot;')}" onchange="upd('${l.id}','value',this.value)" placeholder="$" />
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <div class="field-label">Lead Source</div>
+          <select onchange="upd('${l.id}','source',this.value)">${srcOpts}</select>
+        </div>
+        <div class="field">
+          <div class="field-label">Last Contacted</div>
+          <input type="date" value="${l.lastContact||''}" onchange="upd('${l.id}','lastContact',this.value)" />
+        </div>
+      </div>
+      <div class="field">
+        <div class="field-label">Checklist</div>
+        <div class="checklist">${checks}</div>
+        <button class="add-check" onclick="addCheck('${l.id}')">+ Add task</button>
+      </div>
+      <div class="lead-actions">
+        <button class="btn btn-del" onclick="delLead('${l.id}')">Delete</button>
+        <button class="btn btn-save" onclick="flashSaved('${l.id}')">Saved ✓</button>
+      </div>
+      <div class="saved-flash" id="flash_${l.id}">All changes saved automatically</div>
+    </div>
+  </div>`;
+}
+
+// ---------- VIEWS ----------
+function render() {
+  renderStats();
+  const c = document.getElementById('content');
+  let list = [];
+
+  if (view === 'today') {
+    list = leads.filter(l => isDue(l.nextDate) && !['Won','Lost'].includes(l.stage));
+    list.sort((a,b) => WARMTH.indexOf(b.warmth) - WARMTH.indexOf(a.warmth));
+    if (list.length === 0) {
+      c.innerHTML = `<div class="empty"><div class="ico">⚡</div><h3>You're all caught up</h3><p>No actions due today. Add leads or check your pipeline.</p></div>`;
+      return;
+    }
+    c.innerHTML = `<div class="sec-title">Needs action today <span class="count">${list.length}</span></div>` + list.map(leadCard).join('');
+  }
+
+  else if (view === 'all') {
+    list = [...leads].sort((a,b) => {
+      const wd = WARMTH.indexOf(b.warmth) - WARMTH.indexOf(a.warmth);
+      if (wd !== 0) return wd;
+      return (a.nextDate||'9999') < (b.nextDate||'9999') ? -1 : 1;
+    });
+    if (list.length === 0) {
+      c.innerHTML = `<div class="empty"><div class="ico">🎯</div><h3>No leads yet</h3><p>Tap the + button to add your first lead.</p></div>`;
+      return;
+    }
+    c.innerHTML = `<div class="sec-title">All leads <span class="count">${list.length}</span></div>` + list.map(leadCard).join('');
+  }
+
+  else if (view === 'pipeline') {
+    let html = '';
+    STAGES.forEach(stage => {
+      const items = leads.filter(l => l.stage === stage);
+      if (items.length === 0) return;
+      html += `<div class="sec-title">${stage} <span class="count">${items.length}</span></div>`;
+      html += items.map(leadCard).join('');
+    });
+    if (!html) {
+      c.innerHTML = `<div class="empty"><div class="ico">📊</div><h3>Pipeline empty</h3><p>Add leads to see them grouped by stage.</p></div>`;
+      return;
+    }
+    c.innerHTML = html;
+  }
+}
+
+// ---------- ACTIONS ----------
+window.toggleOpen = (id) => { openId = openId===id ? null : id; render(); };
+window.upd = async (id, field, val) => {
+  const l = leads.find(x=>x.id===id); if(!l) return;
+  l[field] = val;
+  if (field !== 'stage' && field !== 'warmth') { /* keep open */ }
+  await saveLeads();
+  if (field==='stage' || field==='warmth') render();
+};
+window.toggleCheck = async (id, i) => {
+  const l = leads.find(x=>x.id===id); if(!l) return;
+  l.checklist[i].done = !l.checklist[i].done;
+  await saveLeads(); render();
+};
+window.editCheck = async (id, i, val) => {
+  const l = leads.find(x=>x.id===id); if(!l) return;
+  l.checklist[i].text = val; await saveLeads();
+};
+window.addCheck = async (id) => {
+  const l = leads.find(x=>x.id===id); if(!l) return;
+  if(!l.checklist) l.checklist=[];
+  l.checklist.push({text:'', done:false});
+  await saveLeads(); render();
+};
+window.delCheck = async (id, i) => {
+  const l = leads.find(x=>x.id===id); if(!l) return;
+  l.checklist.splice(i,1); await saveLeads(); render();
+};
+window.delLead = async (id) => {
+  if(!confirm('Delete this lead permanently?')) return;
+  leads = leads.filter(x=>x.id!==id);
+  openId = null; await saveLeads(); render();
+};
+window.flashSaved = (id) => {
+  const f = document.getElementById('flash_'+id);
+  if(f){ f.classList.add('show'); setTimeout(()=>f.classList.remove('show'),1500); }
+};
+
+// ---------- TABS ----------
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    view = t.dataset.view; openId = null; render();
+  });
+});
+
+// ---------- MODAL ----------
+const modalBg = document.getElementById('modalBg');
+document.getElementById('addBtn').onclick = () => modalBg.classList.add('open');
+document.getElementById('m_cancel').onclick = () => modalBg.classList.remove('open');
+modalBg.onclick = (e) => { if(e.target===modalBg) modalBg.classList.remove('open'); };
+document.getElementById('m_add').onclick = async () => {
+  const name = document.getElementById('m_name').value.trim();
+  if(!name){ document.getElementById('m_name').focus(); return; }
+  const lead = {
+    id: uid(),
+    name,
+    biz: document.getElementById('m_biz').value.trim(),
+    niche: document.getElementById('m_niche').value.trim(),
+    source: document.getElementById('m_source').value,
+    phone: document.getElementById('m_phone').value.trim(),
+    value: document.getElementById('m_value').value.trim(),
+    stage: 'Contacted',
+    warmth: 'warm',
+    notes: '',
+    nextAction: 'Follow up',
+    nextDate: todayStr(),
+    lastContact: todayStr(),
+    checklist: []
+  };
+  leads.push(lead);
+  await saveLeads();
+  ['m_name','m_biz','m_niche','m_phone','m_value'].forEach(id=>document.getElementById(id).value='');
+  modalBg.classList.remove('open');
+  view = 'all';
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelector('[data-view="all"]').classList.add('active');
+  openId = lead.id;
+  render();
+};
+
+// ---------- INIT ----------
+(async () => {
+  await loadLeads();
+  render();
+})();
+</script>
+</body>
+</html>
