@@ -3,14 +3,15 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Keystone — Lead Command (Migration)</title>
+<title>Keystone — Lead Command</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap');
+
 :root {
   --bg: #04060A; --bg2: #070B12; --panel: #0A1019; --panel2: #0D1521;
   --line: #15202E; --line2: #1C2A3C;
-  --blue: #2BB8FF; --blue-bright: #4FCBFF;
+  --blue: #2BB8FF; --blue-bright: #4FCBFF; --blue-deep: #0A8FE0;
   --blue-glow: rgba(43,184,255,0.5); --blue-soft: rgba(43,184,255,0.12);
   --text: #E6F0FA; --text-soft: #7F93A8; --text-mute: #4A5A6E;
   --hot: #FF4D6D; --warm: #FFB23E; --cold-c: #4A6B8A;
@@ -18,102 +19,186 @@
   --radius: 14px;
 }
 * { margin:0; padding:0; box-sizing:border-box; }
-body { background:var(--bg); color:var(--text); font-family:'Space Grotesk',sans-serif; min-height:100vh; padding-bottom:100px; -webkit-font-smoothing:antialiased; }
+html { scroll-behavior:smooth; }
+body { background:var(--bg); color:var(--text); font-family:'Space Grotesk',sans-serif; -webkit-font-smoothing:antialiased; min-height:100vh; padding-bottom:100px; }
 body::before { content:""; position:fixed; top:-30%; left:50%; transform:translateX(-50%); width:900px; height:600px; background:radial-gradient(ellipse at center, var(--blue-glow), transparent 70%); opacity:0.12; filter:blur(60px); z-index:0; pointer-events:none; }
 .app { max-width:920px; margin:0 auto; padding:0 16px; position:relative; z-index:2; }
 
-header { padding:24px 0 16px; display:flex; align-items:center; gap:12px; }
-.logo-dot { width:12px; height:12px; border-radius:50%; background:var(--blue); box-shadow:0 0 12px var(--blue); animation:pulse 2.5s infinite; }
+.sync-status { position:fixed; top:14px; left:50%; transform:translateX(-50%); z-index:200; background:var(--panel2); border:1px solid var(--line2); border-radius:100px; padding:8px 16px; font-size:0.72rem; font-family:'JetBrains Mono',monospace; color:var(--text-soft); display:flex; align-items:center; gap:8px; opacity:0; pointer-events:none; transition:opacity 0.3s; }
+.sync-status.show { opacity:1; }
+.sync-dot { width:8px; height:8px; border-radius:50%; background:var(--won); box-shadow:0 0 8px var(--won); }
+.sync-dot.syncing { background:var(--warm); box-shadow:0 0 8px var(--warm); animation:pulse 1s infinite; }
+.sync-dot.error { background:var(--hot); box-shadow:0 0 8px var(--hot); }
+
+header { padding:24px 0 16px; display:flex; align-items:center; justify-content:space-between; }
+.brand { display:flex; align-items:center; gap:12px; }
+.logo-dot { width:12px; height:12px; border-radius:50%; background:var(--blue); box-shadow:0 0 12px var(--blue), 0 0 24px var(--blue-glow); animation:pulse 2.5s infinite; }
 @keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.35;} }
-.brand h1 { font-size:1.15rem; font-weight:700; }
+.brand h1 { font-size:1.15rem; font-weight:700; letter-spacing:0.02em; }
 .brand h1 span { color:var(--blue); }
 .brand .sub { font-family:'JetBrains Mono',monospace; font-size:0.65rem; color:var(--text-mute); letter-spacing:0.15em; text-transform:uppercase; }
+.cloud-badge { font-size:0.6rem; color:var(--won); letter-spacing:0.15em; margin-top:3px; font-family:'JetBrains Mono',monospace; }
 
-.migrate-box {
-  background: linear-gradient(135deg, var(--panel), var(--panel2));
-  border: 2px solid var(--blue);
-  border-radius: 20px;
-  padding: 28px 24px;
-  margin: 20px 0 24px;
-  box-shadow: 0 0 40px rgba(43,184,255,0.2);
-}
-.migrate-box h2 { font-size: 1.3rem; margin-bottom: 8px; color: var(--blue-bright); }
-.migrate-box p { font-size: 0.88rem; color: var(--text-soft); margin-bottom: 18px; line-height: 1.5; }
-.migrate-status { font-family:'JetBrains Mono',monospace; font-size:0.85rem; color:var(--warm); margin-bottom:16px; min-height:22px; }
-.migrate-status.done { color: var(--won); }
-.migrate-status.error { color: var(--hot); }
-.migrate-btn {
-  width: 100%;
-  background: var(--blue);
-  color: var(--bg);
-  border: none;
-  padding: 16px;
-  border-radius: 12px;
-  font-family: inherit;
-  font-weight: 700;
-  font-size: 1rem;
-  cursor: pointer;
-  letter-spacing: 0.02em;
-  box-shadow: 0 4px 20px var(--blue-glow);
-  transition: all 0.2s;
-}
-.migrate-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 30px var(--blue-glow); }
-.migrate-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.tabs { display:flex; gap:4px; background:var(--panel); border:1px solid var(--line); border-radius:100px; padding:4px; margin-bottom:20px; }
+.tab { flex:1; text-align:center; padding:10px 6px; border-radius:100px; cursor:pointer; font-size:0.78rem; font-weight:600; color:var(--text-soft); transition:all 0.2s; border:none; background:none; font-family:inherit; }
+.tab.active { background:var(--blue-soft); color:var(--blue-bright); box-shadow:inset 0 0 0 1px rgba(43,184,255,0.3); }
 
-.lead-count {
-  background: var(--panel);
-  border: 1px solid var(--line2);
-  border-radius: 12px;
-  padding: 14px 16px;
-  text-align: center;
-  margin-bottom: 16px;
-}
-.lead-count .num { font-family:'JetBrains Mono',monospace; font-size:2.2rem; font-weight:700; color: var(--blue-bright); line-height:1; }
-.lead-count .lab { font-size:0.7rem; color: var(--text-mute); letter-spacing:0.12em; text-transform:uppercase; margin-top:6px; font-weight:600; }
+.stats-row { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; margin-bottom:20px; }
+.stat { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); padding:14px 12px; text-align:center; }
+.stat .num { font-family:'JetBrains Mono',monospace; font-size:1.5rem; font-weight:700; color:var(--blue-bright); line-height:1; }
+.stat .lab { font-size:0.64rem; color:var(--text-mute); margin-top:6px; letter-spacing:0.08em; text-transform:uppercase; }
+
+.money-bar { background:linear-gradient(135deg, var(--panel), var(--panel2)); border:1px solid var(--line2); border-radius:var(--radius); padding:18px 20px; margin-bottom:20px; display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.money-cell { text-align:center; }
+.money-cell .lab { font-size:0.66rem; color:var(--text-mute); letter-spacing:0.12em; text-transform:uppercase; font-weight:600; margin-bottom:6px; }
+.money-cell .val { font-family:'JetBrains Mono',monospace; font-size:1.4rem; font-weight:700; }
+.money-cell.potential .val { color:var(--blue-bright); }
+.money-cell.closed .val { color:var(--won); }
+.money-cell .sub { font-size:0.66rem; color:var(--text-mute); margin-top:2px; }
 
 .sec-title { font-size:0.72rem; font-weight:700; color:var(--text-mute); letter-spacing:0.16em; text-transform:uppercase; margin:20px 0 12px; display:flex; align-items:center; gap:10px; }
 .sec-title::after { content:""; flex:1; height:1px; background:var(--line); }
 .sec-title .count { color:var(--blue); font-family:'JetBrains Mono',monospace; }
 
-.lead { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); margin-bottom:10px; overflow:hidden; padding:14px 16px; display:flex; align-items:center; gap:12px; }
+.lead { background:var(--panel); border:1px solid var(--line); border-radius:var(--radius); margin-bottom:10px; overflow:hidden; }
+.lead.overdue { border-color:rgba(255,77,109,0.4); }
+.lead-head { padding:14px 16px; cursor:pointer; display:flex; align-items:center; gap:12px; }
 .warmth-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
-.warmth-dot.hot { background:var(--hot); }
-.warmth-dot.warm { background:var(--warm); }
+.warmth-dot.hot { background:var(--hot); box-shadow:0 0 8px var(--hot); }
+.warmth-dot.warm { background:var(--warm); box-shadow:0 0 8px var(--warm); }
 .warmth-dot.cold { background:var(--cold-c); }
 .lead-main { flex:1; min-width:0; }
 .lead-name { font-size:0.96rem; font-weight:600; }
 .lead-biz { font-size:0.78rem; color:var(--text-soft); margin-top:2px; }
-.lead-uploaded { color: var(--won); font-size: 0.7rem; font-family:'JetBrains Mono',monospace; }
+.lead-right { text-align:right; flex-shrink:0; }
+.stage-badge { display:inline-block; font-size:0.62rem; font-weight:700; padding:4px 9px; border-radius:100px; letter-spacing:0.05em; text-transform:uppercase; }
+.stage-cold { background:rgba(74,107,138,0.15); color:#7BA8CC; }
+.stage-contacted { background:rgba(43,184,255,0.12); color:var(--blue-bright); }
+.stage-warm { background:rgba(255,178,62,0.14); color:var(--warm); }
+.stage-meeting { background:rgba(168,85,255,0.16); color:#C79BFF; }
+.stage-proposal { background:rgba(43,184,255,0.18); color:var(--blue-bright); }
+.stage-won { background:rgba(43,255,158,0.14); color:var(--won); }
+.stage-lost { background:rgba(84,101,122,0.15); color:var(--lost); }
+.next-action { font-size:0.7rem; color:var(--text-mute); margin-top:4px; font-family:'JetBrains Mono',monospace; }
+.next-action.due { color:var(--hot); }
+
+.lead-body { display:none; padding:0 16px 16px; border-top:1px solid var(--line); }
+.lead.open .lead-body { display:block; }
+.lead.open .lead-head { padding-bottom:12px; }
+
+.field { margin-top:14px; }
+.field-label { font-size:0.66rem; color:var(--text-mute); letter-spacing:0.1em; text-transform:uppercase; font-weight:600; margin-bottom:6px; }
+.field input, .field textarea, .field select { width:100%; background:var(--bg2); border:1px solid var(--line2); border-radius:9px; padding:10px 12px; color:var(--text); font-family:inherit; font-size:0.86rem; }
+.field input:focus, .field textarea:focus, .field select:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px var(--blue-soft); }
+.field textarea { resize:vertical; min-height:78px; line-height:1.5; }
+.field-row { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+
+.checklist { margin-top:6px; }
+.check-item { display:flex; align-items:center; gap:10px; padding:9px 12px; background:var(--bg2); border:1px solid var(--line); border-radius:9px; margin-bottom:6px; }
+.check-box { width:20px; height:20px; border-radius:6px; flex-shrink:0; border:1.5px solid var(--line2); cursor:pointer; display:flex; align-items:center; justify-content:center; transition:all 0.15s; }
+.check-box.checked { background:var(--blue); border-color:var(--blue); box-shadow:0 0 10px var(--blue-glow); }
+.check-box.checked::after { content:"✓"; color:var(--bg); font-size:0.8rem; font-weight:700; }
+.check-text { flex:1; font-size:0.85rem; background:none; border:none; color:var(--text); font-family:inherit; }
+.check-text:focus { outline:none; }
+.check-item.done .check-text { color:var(--text-mute); text-decoration:line-through; }
+.check-del { color:var(--text-mute); cursor:pointer; font-size:1.1rem; background:none; border:none; padding:0 4px; }
+.check-del:hover { color:var(--hot); }
+.add-check { display:flex; align-items:center; gap:8px; color:var(--blue); font-size:0.8rem; cursor:pointer; background:none; border:none; font-family:inherit; padding:8px 4px; font-weight:600; }
+
+.lead-actions { display:flex; gap:8px; margin-top:16px; }
+.btn { flex:1; padding:11px; border-radius:9px; cursor:pointer; font-family:inherit; font-weight:600; font-size:0.8rem; border:none; transition:all 0.2s; }
+.btn-save { background:var(--blue); color:var(--bg); }
+.btn-save:hover { box-shadow:0 0 16px var(--blue-glow); }
+.btn-del { background:none; border:1px solid var(--line2); color:var(--text-soft); flex:0 0 auto; padding:11px 16px; }
+.btn-del:hover { border-color:var(--hot); color:var(--hot); }
+
+.fab { position:fixed; bottom:24px; right:24px; z-index:50; width:60px; height:60px; border-radius:50%; background:var(--blue); border:none; cursor:pointer; font-size:1.8rem; color:var(--bg); font-weight:300; box-shadow:0 4px 24px var(--blue-glow), 0 0 0 1px rgba(255,255,255,0.1); display:flex; align-items:center; justify-content:center; transition:transform 0.2s; }
+.fab:hover { transform:scale(1.08) rotate(90deg); }
+
+.modal-bg { display:none; position:fixed; inset:0; z-index:100; background:rgba(2,4,8,0.85); backdrop-filter:blur(6px); align-items:flex-start; justify-content:center; padding:30px 16px; overflow-y:auto; }
+.modal-bg.open { display:flex; }
+.modal { background:var(--panel2); border:1px solid var(--line2); border-radius:18px; padding:26px 22px; width:100%; max-width:480px; box-shadow:0 20px 60px rgba(0,0,0,0.6); }
+.modal h2 { font-size:1.18rem; margin-bottom:4px; }
+.modal .modal-sub { font-size:0.78rem; color:var(--text-mute); margin-bottom:20px; }
 
 .empty { text-align:center; padding:60px 20px; color:var(--text-mute); }
 .empty .ico { font-size:2.5rem; margin-bottom:16px; opacity:0.5; }
 .empty h3 { color:var(--text-soft); font-weight:600; margin-bottom:8px; }
+.empty p { font-size:0.86rem; }
+
+.todo-add { display:flex; gap:8px; margin-bottom:16px; }
+.todo-add input { flex:1; background:var(--panel); border:1px solid var(--line2); border-radius:10px; padding:12px 14px; color:var(--text); font-family:inherit; font-size:0.9rem; }
+.todo-add input:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 3px var(--blue-soft); }
+.todo-add button { background:var(--blue); color:var(--bg); border:none; padding:0 18px; border-radius:10px; cursor:pointer; font-weight:700; font-family:inherit; }
+.todo-item { display:flex; align-items:center; gap:12px; background:var(--panel); border:1px solid var(--line); border-radius:10px; padding:13px 14px; margin-bottom:8px; }
+.todo-item.done { opacity:0.55; }
+.todo-item.done .todo-text { text-decoration:line-through; color:var(--text-mute); }
+.todo-text { flex:1; font-size:0.92rem; background:none; border:none; color:var(--text); font-family:inherit; }
+.todo-text:focus { outline:none; }
+.todo-del { background:none; border:none; color:var(--text-mute); cursor:pointer; font-size:1.15rem; padding:0 4px; }
+.todo-del:hover { color:var(--hot); }
+
+.loading { text-align:center; padding:80px 20px; color:var(--text-soft); }
+.loading .spin { width:32px; height:32px; border:3px solid var(--line2); border-top-color:var(--blue); border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 16px; }
+@keyframes spin { to{transform:rotate(360deg);} }
+
+@media (max-width:600px) {
+  .stats-row { grid-template-columns:repeat(2,1fr); }
+  .field-row { grid-template-columns:1fr; }
+  .tab { font-size:0.7rem; padding:9px 4px; }
+  header { flex-wrap:wrap; gap:12px; }
+}
 </style>
 </head>
 <body>
+<div class="sync-status" id="syncStatus"><div class="sync-dot" id="syncDot"></div><span id="syncText">Synced</span></div>
+
 <div class="app">
   <header>
-    <div class="logo-dot"></div>
     <div class="brand">
-      <h1>Lead<span>Command</span></h1>
-      <div class="sub">Migration Tool</div>
+      <div class="logo-dot"></div>
+      <div>
+        <h1>Lead<span>Command</span></h1>
+        <div class="sub">Keystone Growth</div>
+        <div class="cloud-badge">☁ CLOUD SYNCED</div>
+      </div>
     </div>
   </header>
 
-  <div class="lead-count">
-    <div class="num" id="leadCount">0</div>
-    <div class="lab">Leads Found on This Device</div>
+  <div class="tabs">
+    <button class="tab active" data-view="today">Today</button>
+    <button class="tab" data-view="all">All</button>
+    <button class="tab" data-view="pipeline">Pipeline</button>
+    <button class="tab" data-view="todo">To-Do</button>
   </div>
 
-  <div class="migrate-box">
-    <h2>☁ Upload Your Leads to Cloud</h2>
-    <p>This will copy every lead from this device into Supabase. Your local copy stays exactly where it is — nothing gets deleted. Just a one-way upload.</p>
-    <div class="migrate-status" id="status">Ready to migrate.</div>
-    <button class="migrate-btn" id="migrateBtn">Upload All Leads to Cloud →</button>
-  </div>
+  <div class="stats-row" id="statsRow"></div>
+  <div class="money-bar" id="moneyBar"></div>
 
-  <div class="sec-title">Leads on this device <span class="count" id="leadCountSec">0</span></div>
-  <div id="leadList"></div>
+  <div id="content"><div class="loading"><div class="spin"></div>Loading from cloud...</div></div>
+</div>
+
+<button class="fab" id="addBtn">+</button>
+
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h2>New Lead</h2>
+    <div class="modal-sub">Add someone to the pipeline</div>
+    <div class="field"><div class="field-label">Name</div><input id="m_name" placeholder="Who is it?" /></div>
+    <div class="field"><div class="field-label">Business Name</div><input id="m_biz" placeholder="Their business" /></div>
+    <div class="field-row">
+      <div class="field"><div class="field-label">Niche</div><input id="m_niche" placeholder="e.g. Mechanic" /></div>
+      <div class="field"><div class="field-label">Lead Source</div><select id="m_source"><option>Door Knock</option><option>Referral</option><option>Email</option><option>Walk-in</option><option>Social</option><option>Other</option></select></div>
+    </div>
+    <div class="field-row">
+      <div class="field"><div class="field-label">Phone</div><input id="m_phone" placeholder="Contact number" /></div>
+      <div class="field"><div class="field-label">Est. Value /mo</div><input id="m_value" placeholder="$" /></div>
+    </div>
+    <div class="lead-actions">
+      <button class="btn btn-del" id="m_cancel">Cancel</button>
+      <button class="btn btn-save" id="m_add">Add Lead</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -121,116 +206,233 @@ const SUPABASE_URL = 'https://vjmilasxxzrigophosdx.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_j9T7zbiCAP2WM4YvamD6cg_s9p1TNzK';
 const db = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-let localLeads = [];
-let uploaded = new Set();
+const STAGES = ["Cold","Contacted","Warm","Meeting Booked","Proposal Sent","Won","Lost"];
+const STAGE_CLASS = {"Cold":"stage-cold","Contacted":"stage-contacted","Warm":"stage-warm","Meeting Booked":"stage-meeting","Proposal Sent":"stage-proposal","Won":"stage-won","Lost":"stage-lost"};
+const WARMTH = ["cold","warm","hot"];
 
-function loadLocal() {
-  try {
-    const raw = localStorage.getItem('leads_data');
-    if (raw) localLeads = JSON.parse(raw);
-  } catch(e) { localLeads = []; }
-}
+let leads = [], todos = [], view = "today", openId = null;
 
 function todayStr() { return new Date().toISOString().split('T')[0]; }
+function isDue(d) { if(!d) return false; return d <= todayStr(); }
+function fmtDate(d) {
+  if(!d) return 'No date set';
+  const date = new Date(d + 'T00:00:00');
+  const today = new Date(todayStr() + 'T00:00:00');
+  const diff = Math.round((date - today) / 86400000);
+  if(diff === 0) return 'Today';
+  if(diff === 1) return 'Tomorrow';
+  if(diff === -1) return 'Yesterday';
+  if(diff < 0) return Math.abs(diff) + ' days overdue';
+  if(diff < 7) return 'In ' + diff + ' days';
+  return date.toLocaleDateString('en-AU', {day:'numeric', month:'short'});
+}
+function uid() { return 'L' + Date.now() + Math.floor(Math.random()*1000); }
 
-function render() {
-  document.getElementById('leadCount').textContent = localLeads.length;
-  document.getElementById('leadCountSec').textContent = localLeads.length;
-  const list = document.getElementById('leadList');
-  if (localLeads.length === 0) {
-    list.innerHTML = `<div class="empty"><div class="ico">⚠</div><h3>No leads found on this device</h3><p>Make sure you opened this from the home-screen app icon that has your leads.</p></div>`;
-    document.getElementById('migrateBtn').disabled = true;
-    return;
-  }
-  list.innerHTML = localLeads.map(l => `
-    <div class="lead">
+function syncing() { const s=document.getElementById('syncStatus'); s.classList.add('show'); document.getElementById('syncDot').className='sync-dot syncing'; document.getElementById('syncText').textContent='Syncing...'; }
+function synced() { document.getElementById('syncDot').className='sync-dot'; document.getElementById('syncText').textContent='Synced ✓'; setTimeout(()=>document.getElementById('syncStatus').classList.remove('show'),1500); }
+function syncError(msg) { document.getElementById('syncStatus').classList.add('show'); document.getElementById('syncDot').className='sync-dot error'; document.getElementById('syncText').textContent='Error: '+msg; }
+
+async function loadFromCloud() {
+  try {
+    syncing();
+    const { data: leadsData, error: e1 } = await db.from('leads').select('*').order('created_at', { ascending: true });
+    if (e1) throw e1;
+    const { data: todosData, error: e2 } = await db.from('todos').select('*').order('created_at', { ascending: true });
+    if (e2) throw e2;
+    leads = (leadsData || []).map(r => ({
+      id:r.id, name:r.name||'', biz:r.biz||'', niche:r.niche||'', source:r.source||'Door Knock',
+      phone:r.phone||'', value:r.value||'', stage:r.stage||'Contacted', warmth:r.warmth||'warm',
+      notes:r.notes||'', nextAction:r.next_action||'', nextDate:r.next_date||'',
+      lastContact:r.last_contact||'', checklist:r.checklist||[]
+    }));
+    todos = todosData || [];
+    synced();
+  } catch (e) { console.error('Load error:', e); syncError('Could not load'); }
+}
+
+async function saveLeadToCloud(l) {
+  try {
+    syncing();
+    const row = { id:l.id, name:l.name, biz:l.biz, niche:l.niche, source:l.source, phone:l.phone, value:l.value, stage:l.stage, warmth:l.warmth, notes:l.notes, next_action:l.nextAction, next_date:l.nextDate||null, last_contact:l.lastContact||null, checklist:l.checklist||[], updated_at:new Date().toISOString() };
+    const { error } = await db.from('leads').upsert(row);
+    if (error) throw error;
+    synced();
+  } catch (e) { console.error('Save error:', e); syncError('Save failed'); }
+}
+
+async function deleteLeadFromCloud(id) {
+  try { syncing(); const { error } = await db.from('leads').delete().eq('id', id); if (error) throw error; synced(); }
+  catch (e) { console.error('Delete error:', e); syncError('Delete failed'); }
+}
+
+async function saveTodoToCloud(t) {
+  try { syncing(); const { error } = await db.from('todos').upsert({id:t.id, text:t.text, done:t.done, created:t.created}); if (error) throw error; synced(); }
+  catch (e) { console.error('Todo save error:', e); syncError('Save failed'); }
+}
+
+async function deleteTodoFromCloud(id) {
+  try { syncing(); const { error } = await db.from('todos').delete().eq('id', id); if (error) throw error; synced(); }
+  catch (e) { console.error('Todo del error:', e); syncError('Delete failed'); }
+}
+
+function renderStats() {
+  const total = leads.length;
+  const active = leads.filter(l => !['Won','Lost'].includes(l.stage)).length;
+  const won = leads.filter(l => l.stage === 'Won').length;
+  const dueToday = leads.filter(l => isDue(l.nextDate) && !['Won','Lost'].includes(l.stage)).length;
+  document.getElementById('statsRow').innerHTML = `
+    <div class="stat"><div class="num">${total}</div><div class="lab">Total</div></div>
+    <div class="stat"><div class="num">${active}</div><div class="lab">Active</div></div>
+    <div class="stat"><div class="num" style="color:var(--hot)">${dueToday}</div><div class="lab">Due Now</div></div>
+    <div class="stat"><div class="num" style="color:var(--won)">${won}</div><div class="lab">Won</div></div>`;
+  const potential = leads.filter(l => !['Won','Lost'].includes(l.stage)).reduce((s,l) => s + (parseFloat(l.value)||0), 0);
+  const closed = leads.filter(l => l.stage === 'Won').reduce((s,l) => s + (parseFloat(l.value)||0), 0);
+  document.getElementById('moneyBar').innerHTML = `
+    <div class="money-cell potential"><div class="lab">Potential</div><div class="val">$${potential.toLocaleString()}</div><div class="sub">/month if all close</div></div>
+    <div class="money-cell closed"><div class="lab">Closed</div><div class="val">$${closed.toLocaleString()}</div><div class="sub">/month locked in</div></div>`;
+}
+
+function leadCard(l) {
+  const overdue = isDue(l.nextDate) && !['Won','Lost'].includes(l.stage);
+  const checks = (l.checklist || []).map((c,i) => `
+    <div class="check-item ${c.done?'done':''}">
+      <div class="check-box ${c.done?'checked':''}" onclick="toggleCheck('${l.id}',${i})"></div>
+      <input class="check-text" value="${(c.text||'').replace(/"/g,'&quot;')}" onchange="editCheck('${l.id}',${i},this.value)" placeholder="Task..." />
+      <button class="check-del" onclick="delCheck('${l.id}',${i})">×</button>
+    </div>`).join('');
+  const stageOpts = STAGES.map(s => `<option ${s===l.stage?'selected':''}>${s}</option>`).join('');
+  const warmthOpts = WARMTH.map(w => `<option ${w===l.warmth?'selected':''}>${w}</option>`).join('');
+  const srcOpts = ["Door Knock","Referral","Email","Walk-in","Social","Other"].map(s=>`<option ${s===l.source?'selected':''}>${s}</option>`).join('');
+  return `
+  <div class="lead ${openId===l.id?'open':''} ${overdue?'overdue':''}" id="card_${l.id}">
+    <div class="lead-head" onclick="toggleOpen('${l.id}')">
       <div class="warmth-dot ${l.warmth||'cold'}"></div>
       <div class="lead-main">
-        <div class="lead-name">${l.name || 'Unnamed'}</div>
-        <div class="lead-biz">${l.biz || ''}${l.niche?' · '+l.niche:''}</div>
+        <div class="lead-name">${l.name||'Unnamed'}</div>
+        <div class="lead-biz">${l.biz||''}${l.niche?' · '+l.niche:''}</div>
       </div>
-      ${uploaded.has(l.id) ? '<div class="lead-uploaded">✓ UPLOADED</div>' : ''}
-    </div>`).join('');
+      <div class="lead-right">
+        <span class="stage-badge ${STAGE_CLASS[l.stage]}">${l.stage}</span>
+        <div class="next-action ${overdue?'due':''}">${l.nextAction? l.nextAction+' · ':''}${fmtDate(l.nextDate)}</div>
+      </div>
+    </div>
+    <div class="lead-body">
+      <div class="field-row">
+        <div class="field"><div class="field-label">Stage</div><select onchange="upd('${l.id}','stage',this.value)">${stageOpts}</select></div>
+        <div class="field"><div class="field-label">Warmth</div><select onchange="upd('${l.id}','warmth',this.value)">${warmthOpts}</select></div>
+      </div>
+      <div class="field"><div class="field-label">What they said / Notes</div><textarea onchange="upd('${l.id}','notes',this.value)" placeholder="Everything they told you...">${l.notes||''}</textarea></div>
+      <div class="field-row">
+        <div class="field"><div class="field-label">Next Action</div><input value="${(l.nextAction||'').replace(/"/g,'&quot;')}" onchange="upd('${l.id}','nextAction',this.value)" /></div>
+        <div class="field"><div class="field-label">Due Date</div><input type="date" value="${l.nextDate||''}" onchange="upd('${l.id}','nextDate',this.value)" /></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><div class="field-label">Phone</div><input value="${(l.phone||'').replace(/"/g,'&quot;')}" onchange="upd('${l.id}','phone',this.value)" /></div>
+        <div class="field"><div class="field-label">Est. Value /mo</div><input value="${(l.value||'').replace(/"/g,'&quot;')}" onchange="upd('${l.id}','value',this.value)" placeholder="$" /></div>
+      </div>
+      <div class="field-row">
+        <div class="field"><div class="field-label">Lead Source</div><select onchange="upd('${l.id}','source',this.value)">${srcOpts}</select></div>
+        <div class="field"><div class="field-label">Last Contacted</div><input type="date" value="${l.lastContact||''}" onchange="upd('${l.id}','lastContact',this.value)" /></div>
+      </div>
+      <div class="field">
+        <div class="field-label">Checklist</div>
+        <div class="checklist">${checks}</div>
+        <button class="add-check" onclick="addCheck('${l.id}')">+ Add task</button>
+      </div>
+      <div class="lead-actions">
+        <button class="btn btn-del" onclick="delLead('${l.id}')">Delete</button>
+        <button class="btn btn-save" onclick="reloadFromCloud()">Refresh from Cloud</button>
+      </div>
+    </div>
+  </div>`;
 }
 
-async function migrate() {
-  const btn = document.getElementById('migrateBtn');
-  const status = document.getElementById('status');
-  btn.disabled = true;
-  status.className = 'migrate-status';
-  status.textContent = 'Starting upload...';
+function todoItem(t, i) {
+  return `<div class="todo-item ${t.done?'done':''}"><div class="check-box ${t.done?'checked':''}" onclick="toggleTodo(${i})"></div><input class="todo-text" value="${(t.text||'').replace(/"/g,'&quot;')}" onchange="editTodo(${i},this.value)" /><button class="todo-del" onclick="delTodo(${i})">×</button></div>`;
+}
 
-  let success = 0;
-  let failed = 0;
-
-  for (let i = 0; i < localLeads.length; i++) {
-    const l = localLeads[i];
-    status.textContent = `Uploading ${i+1} of ${localLeads.length} — ${l.name}...`;
-    try {
-      const row = {
-        id: l.id,
-        name: l.name || '',
-        biz: l.biz || '',
-        niche: l.niche || '',
-        source: l.source || 'Door Knock',
-        phone: l.phone || '',
-        value: l.value || '',
-        stage: l.stage || 'Contacted',
-        warmth: l.warmth || 'warm',
-        notes: l.notes || '',
-        next_action: l.nextAction || '',
-        next_date: l.nextDate || null,
-        last_contact: l.lastContact || null,
-        checklist: l.checklist || [],
-        updated_at: new Date().toISOString()
-      };
-      const { error } = await db.from('leads').upsert(row);
-      if (error) {
-        console.error('Failed:', l.name, error);
-        failed++;
-      } else {
-        success++;
-        uploaded.add(l.id);
-      }
-      render();
-    } catch (e) {
-      console.error('Error:', e);
-      failed++;
-    }
+function render() {
+  renderStats();
+  const c = document.getElementById('content');
+  document.querySelector('.money-bar').style.display = view==='todo' ? 'none' : 'grid';
+  document.querySelector('.stats-row').style.display = view==='todo' ? 'none' : 'grid';
+  let list = [];
+  if (view === 'today') {
+    list = leads.filter(l => isDue(l.nextDate) && !['Won','Lost'].includes(l.stage));
+    list.sort((a,b) => WARMTH.indexOf(b.warmth) - WARMTH.indexOf(a.warmth));
+    if (list.length === 0) { c.innerHTML = `<div class="empty"><div class="ico">⚡</div><h3>You're all caught up</h3><p>No actions due today.</p></div>`; return; }
+    c.innerHTML = `<div class="sec-title">Needs action today <span class="count">${list.length}</span></div>` + list.map(leadCard).join('');
   }
-
-  // Also upload todos if they exist
-  try {
-    const rawTodos = localStorage.getItem('todos_data');
-    if (rawTodos) {
-      const todos = JSON.parse(rawTodos);
-      for (const t of todos) {
-        await db.from('todos').upsert({
-          id: t.id || 'T'+Date.now()+Math.floor(Math.random()*1000),
-          text: t.text || '',
-          done: !!t.done,
-          created: t.created || todayStr()
-        });
-      }
+  else if (view === 'all') {
+    list = [...leads].sort((a,b) => { const wd = WARMTH.indexOf(b.warmth) - WARMTH.indexOf(a.warmth); if (wd !== 0) return wd; return (a.nextDate||'9999') < (b.nextDate||'9999') ? -1 : 1; });
+    if (list.length === 0) { c.innerHTML = `<div class="empty"><div class="ico">🎯</div><h3>No leads yet</h3><p>Tap + to add your first lead.</p></div>`; return; }
+    c.innerHTML = `<div class="sec-title">All leads <span class="count">${list.length}</span></div>` + list.map(leadCard).join('');
+  }
+  else if (view === 'pipeline') {
+    let html = '';
+    STAGES.forEach(stage => {
+      const items = leads.filter(l => l.stage === stage);
+      if (items.length === 0) return;
+      html += `<div class="sec-title">${stage} <span class="count">${items.length}</span></div>` + items.map(leadCard).join('');
+    });
+    c.innerHTML = html || `<div class="empty"><div class="ico">📊</div><h3>Pipeline empty</h3></div>`;
+  }
+  else if (view === 'todo') {
+    let html = `<div class="todo-add"><input id="todoInput" placeholder="What needs doing?" onkeypress="if(event.key==='Enter')addTodo()" /><button onclick="addTodo()">Add</button></div>`;
+    if (todos.length === 0) { html += `<div class="empty"><div class="ico">📝</div><h3>Nothing on the list</h3></div>`; }
+    else {
+      const open = todos.filter(t=>!t.done);
+      const done = todos.filter(t=>t.done);
+      if (open.length) html += `<div class="sec-title">To do <span class="count">${open.length}</span></div>` + open.map((t,i)=>todoItem(t, todos.indexOf(t))).join('');
+      if (done.length) html += `<div class="sec-title">Done <span class="count">${done.length}</span></div>` + done.map(t=>todoItem(t, todos.indexOf(t))).join('');
     }
-  } catch (e) { console.error('Todos error:', e); }
-
-  if (failed === 0) {
-    status.className = 'migrate-status done';
-    status.textContent = `✓ DONE — All ${success} leads uploaded to cloud successfully.`;
-    btn.textContent = 'Migration Complete ✓';
-  } else {
-    status.className = 'migrate-status error';
-    status.textContent = `Uploaded ${success}, failed ${failed}. Check console for details.`;
-    btn.disabled = false;
-    btn.textContent = 'Try Failed Again';
+    c.innerHTML = html;
   }
 }
 
-document.getElementById('migrateBtn').onclick = migrate;
+window.toggleOpen = (id) => { openId = openId===id ? null : id; render(); };
+window.upd = async (id, field, val) => { const l = leads.find(x=>x.id===id); if(!l) return; l[field] = val; await saveLeadToCloud(l); if (field==='stage' || field==='warmth' || field==='value') render(); };
+window.toggleCheck = async (id, i) => { const l=leads.find(x=>x.id===id); if(!l) return; l.checklist[i].done = !l.checklist[i].done; await saveLeadToCloud(l); render(); };
+window.editCheck = async (id, i, val) => { const l=leads.find(x=>x.id===id); if(!l) return; l.checklist[i].text = val; await saveLeadToCloud(l); };
+window.addCheck = async (id) => { const l=leads.find(x=>x.id===id); if(!l) return; if(!l.checklist) l.checklist=[]; l.checklist.push({text:'', done:false}); await saveLeadToCloud(l); render(); };
+window.delCheck = async (id, i) => { const l=leads.find(x=>x.id===id); if(!l) return; l.checklist.splice(i,1); await saveLeadToCloud(l); render(); };
+window.delLead = async (id) => { if(!confirm('Delete this lead permanently?')) return; await deleteLeadFromCloud(id); leads=leads.filter(x=>x.id!==id); openId=null; render(); };
+window.reloadFromCloud = async () => { await loadFromCloud(); render(); };
 
-loadLocal();
-render();
+window.addTodo = async () => { const input = document.getElementById('todoInput'); const v = input.value.trim(); if(!v) return; const t = {id:'T'+Date.now()+Math.floor(Math.random()*1000), text:v, done:false, created:todayStr()}; todos.push(t); input.value=''; await saveTodoToCloud(t); render(); };
+window.toggleTodo = async (i) => { todos[i].done = !todos[i].done; await saveTodoToCloud(todos[i]); render(); };
+window.editTodo = async (i, val) => { todos[i].text = val; await saveTodoToCloud(todos[i]); };
+window.delTodo = async (i) => { const id = todos[i].id; await deleteTodoFromCloud(id); todos.splice(i,1); render(); };
+
+document.querySelectorAll('.tab').forEach(t => {
+  t.addEventListener('click', () => {
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+    t.classList.add('active');
+    view = t.dataset.view; openId = null; render();
+  });
+});
+
+const modalBg = document.getElementById('modalBg');
+document.getElementById('addBtn').onclick = () => modalBg.classList.add('open');
+document.getElementById('m_cancel').onclick = () => modalBg.classList.remove('open');
+modalBg.onclick = (e) => { if(e.target===modalBg) modalBg.classList.remove('open'); };
+document.getElementById('m_add').onclick = async () => {
+  const name = document.getElementById('m_name').value.trim();
+  if(!name){ document.getElementById('m_name').focus(); return; }
+  const lead = { id: uid(), name, biz: document.getElementById('m_biz').value.trim(), niche: document.getElementById('m_niche').value.trim(), source: document.getElementById('m_source').value, phone: document.getElementById('m_phone').value.trim(), value: document.getElementById('m_value').value.trim(), stage: 'Contacted', warmth: 'warm', notes: '', nextAction: 'Follow up', nextDate: todayStr(), lastContact: todayStr(), checklist: [] };
+  leads.push(lead);
+  await saveLeadToCloud(lead);
+  ['m_name','m_biz','m_niche','m_phone','m_value'].forEach(id=>document.getElementById(id).value='');
+  modalBg.classList.remove('open');
+  view = 'all';
+  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
+  document.querySelector('[data-view="all"]').classList.add('active');
+  openId = lead.id; render();
+};
+
+setInterval(async () => { await loadFromCloud(); render(); }, 30000);
+
+(async () => { await loadFromCloud(); render(); })();
 </script>
 </body>
 </html>
